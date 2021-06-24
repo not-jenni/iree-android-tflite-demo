@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -78,7 +80,7 @@ public class TextClassificationClient {
     try {
       // Load the TF Lite model
       ByteBuffer buffer = loadModelFile(this.context.getAssets(), MODEL_PATH);
-      tflite = new Interpreter(buffer);
+      tflite = new Interpreter(buffer, null);
       Log.v(TAG, "TFLite model loaded.");
 
       // Use metadata extractor to extract the dictionary and label files.
@@ -114,7 +116,15 @@ public class TextClassificationClient {
     // Run inference.
     Log.v(TAG, "Classifying text with TF Lite...");
     float[][] output = new float[1][labels.size()];
-    tflite.run(input, output);
+
+    // Map input arrays to FloatBuffers.
+    int bytesInFloat = 4;
+    FloatBuffer inputBuffer = ByteBuffer.allocateDirect(bytesInFloat * input.length).order(
+        ByteOrder.nativeOrder()).asFloatBuffer();
+    FloatBuffer outputBuffer = ByteBuffer.allocateDirect(bytesInFloat * output.length).order(
+        ByteOrder.nativeOrder()).asFloatBuffer();
+
+    tflite.run(inputBuffer, outputBuffer);
 
     // Find the best classifications.
     PriorityQueue<Result> pq =
